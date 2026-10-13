@@ -15,7 +15,7 @@ import com.theis.agrinovis.data.local.entities.NotificationEntity
 import com.theis.agrinovis.data.local.entities.UserAccountEntity
 import com.theis.agrinovis.data.local.database.converters.NotificationConverters
 
-@Database(entities = [PlantEntity::class, ActivityLogEntity::class, NotificationEntity::class, UserAccountEntity::class], version = 7, exportSchema = false)
+@Database(entities = [PlantEntity::class, ActivityLogEntity::class, NotificationEntity::class, UserAccountEntity::class], version = 8, exportSchema = false)
 @TypeConverters(NotificationConverters::class)
 abstract class AgrinovisDatabase : RoomDatabase() {
     abstract fun plantDao(): PlantDao

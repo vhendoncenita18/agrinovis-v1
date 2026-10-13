@@ -773,3 +773,50 @@ Any major change must include:
 6. Migration steps
 
 The developer must understand the change before implementation.
+
+---
+
+# 29. Automatic Daily Growth Progression Architecture
+
+The system incorporates a time-aware progression engine that connects real elapsed time to plant growth stages and 3D visualization.
+
+```text
+       ROOM DB (PlantEntity)
+                 │
+                 ▼
+       Creation Timestamp (ms)
+                 │
+                 ▼
+     Real-time Calendar Delta
+   (System.currentTimeMillis - Timestamp)
+                 │
+                 ▼
+          Elapsed Days
+                 │
+        ┌────────┴────────┐
+        ▼                 ▼
+   Updated DAP    Remaining Days
+        │                 │
+        └────────┬────────┘
+                 │
+                 ▼
+       Stage Inference Engine
+(Seedling → Vegetative → Heading → Maturity)
+                 │
+        ┌────────┴────────┐
+        ▼                 ▼
+  UI Badges &       3D Holographic
+  Countdown        Plant Renderer
+  (Monitor Fleet)   (Filament GLTF)
+```
+
+## Data Flow & Architecture
+1. **Creation Anchor**: When a prediction is generated, the record is saved with its initial `dap`, `daysToHarvest`, `stage`, and `timestamp` (system milliseconds).
+2. **Repository Transformation**: When `PlantRepository.getPlantsForUser()` queries Room DB, emitted entities pass through `PlantUtils.getUpdatedPlantForCurrentDate()`.
+3. **Stage Re-Inference**: If $\text{Elapsed Days} > 0$, the engine automatically recalculates `dap`, `daysToHarvest`, and infers whether the plant has progressed to a new growth stage (`Seedling` $\to$ `Vegetative` $\to$ `Heading` $\to$ `Maturity`).
+4. **UI & 3D Synchronization**:
+   - The UI automatically re-groups plants under their updated stage headers on the Monitor screen.
+   - The 3D viewer resolves the corresponding GLTF model asset (`models/{variety}_{stage}.glb`) and scale.
+   - System Notifications trigger when plants transition to "Ready to Harvest".
+5. **Disk Persistence**: Updated values are persisted back to Room DB so the app stays synchronized across restarts.
+

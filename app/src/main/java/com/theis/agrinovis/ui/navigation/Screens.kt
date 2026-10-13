@@ -3,6 +3,13 @@ package com.theis.agrinovis.ui.navigation
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Signup : Screen("signup")
+    object ForgotPassword : Screen("forgot_password")
+    object VerifyOtp : Screen("verify_otp/{email}") {
+        fun createRoute(email: String) = "verify_otp/$email"
+    }
+    object ResetPassword : Screen("reset_password/{email}/{otp}") {
+        fun createRoute(email: String, otp: String) = "reset_password/$email/$otp"
+    }
     object Dashboard : Screen("dashboard")
     object Plants : Screen("plants")
     object AddPlant : Screen("add_plant")

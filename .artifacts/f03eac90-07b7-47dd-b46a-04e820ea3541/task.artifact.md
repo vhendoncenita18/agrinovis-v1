@@ -1,0 +1,3 @@
+- `[x]` Review master implementation specification and architecture
+- `[x]` Verify TFLite YOLOv8-seg preprocessing, target selection, and Feret diameter / height calibration (`9.3340` & `9.8477`)
+- `[x]` Validate build success and device deployment readiness

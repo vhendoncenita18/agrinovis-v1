@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -38,6 +39,7 @@ fun PlantDetailScreen(
 ) {
     var plant by remember { mutableStateOf<PlantEntity?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showHarvestDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(plantId) {
         plant = viewModel.getPlantById(plantId)
@@ -61,6 +63,32 @@ fun PlantDetailScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text("CANCEL", color = Color.White)
+                }
+            }
+        )
+    }
+
+    if (showHarvestDialog && plant != null) {
+        AlertDialog(
+            onDismissRequest = { showHarvestDialog = false },
+            title = { Text("HARVEST LETTUCE", color = Color.White, fontWeight = FontWeight.Black) },
+            text = { Text("Are you sure you want to harvest and finalize Plant ID ${plant!!.id} (${plant!!.variety}) at ${plant!!.dap} DAP?", color = Color.White.copy(alpha = 0.8f)) },
+            containerColor = DarkHologramBG,
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.harvestPlant(plant!!)
+                        showHarvestDialog = false
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
+                ) {
+                    Text("HARVEST NOW", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showHarvestDialog = false }) {
+                    Text("CANCEL", color = Color.White.copy(alpha = 0.6f))
                 }
             }
         )
@@ -186,6 +214,40 @@ fun PlantDetailScreen(
                                     color = NeonGreen,
                                     trackColor = Color.White.copy(alpha = 0.1f),
                                 )
+
+                                val isReadyToHarvest = plant!!.harvestStatus.equals("Ready to Harvest", ignoreCase = true) ||
+                                        plant!!.stage.equals("Maturity", ignoreCase = true) ||
+                                        plant!!.daysToHarvest <= 0 ||
+                                        plant!!.dap >= 33
+
+                                if (!plant!!.harvestStatus.equals("Harvested", ignoreCase = true)) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Button(
+                                        onClick = { showHarvestDialog = true },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isReadyToHarvest) NeonGreen else Color.White.copy(alpha = 0.15f)
+                                        ),
+                                        shape = RoundedCornerShape(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = if (isReadyToHarvest) Color.Black else NeonGreen,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = if (isReadyToHarvest) "HARVEST PLANT (READY)" else "HARVEST PLANT NOW",
+                                            color = if (isReadyToHarvest) Color.Black else NeonGreen,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Black,
+                                            letterSpacing = 1.sp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

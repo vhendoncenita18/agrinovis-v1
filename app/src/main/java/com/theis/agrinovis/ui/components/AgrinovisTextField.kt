@@ -64,6 +64,7 @@ fun AgrinovisTextField(
                 .background(GlassBackground),
             enabled = enabled,
             singleLine = singleLine,
+            textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 14.sp),
             placeholder = {
                 Text(
                     text = placeholder,

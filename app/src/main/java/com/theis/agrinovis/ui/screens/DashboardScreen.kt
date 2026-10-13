@@ -27,6 +27,10 @@ fun DashboardScreen(
     homeViewModel: HomeViewModel = viewModel(),
     plantsViewModel: PlantsViewModel = viewModel()
 ) {
+    LaunchedEffect(Unit) {
+        plantsViewModel.refreshUserAndPlants()
+    }
+
     val weather by homeViewModel.weatherState.collectAsState()
     val plants by plantsViewModel.allPlants.collectAsState()
     val unreadCount by homeViewModel.unreadCount.collectAsState()

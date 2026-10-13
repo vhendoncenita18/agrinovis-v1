@@ -1,5 +1,7 @@
 package com.theis.agrinovis.ui.utils
 
+import com.theis.agrinovis.data.local.entities.PlantEntity
+
 data class StageRecommendation(
     val primaryFocus: String,
     val irrigationAdvice: String,
@@ -27,6 +29,26 @@ object PlantUtils {
         }
 
         return "models/${varietyPrefix}_${cleanStage}.glb"
+    }
+
+    fun get2dPicturePathForVarietyAndStage(variety: String, stage: String): String {
+        val cleanVariety = variety.trim().lowercase()
+        val cleanStage = when (stage.trim().lowercase()) {
+            "seedling" -> "seedling"
+            "vegetative", "early growth" -> "vegetative"
+            "heading", "developing", "growing" -> "heading"
+            "maturity", "mature", "harvest ready", "ready to harvest" -> "maturity"
+            else -> "vegetative"
+        }
+
+        val varietyPrefix = when {
+            cleanVariety.contains("olmetie") -> "olmetie"
+            cleanVariety.contains("limambo") || cleanVariety.contains("limambi") -> "limambo"
+            cleanVariety.contains("orbital") -> "orbital"
+            else -> "olmetie"
+        }
+
+        return "2d-picture/${varietyPrefix}_${cleanStage}.jpg"
     }
 
     fun getModelPathForStage(stage: String): String {
@@ -101,5 +123,56 @@ object PlantUtils {
                 monitoringTip = "Observe leaf health and capture periodic dimensions for ML tracking"
             )
         }
+    }
+
+    fun getUpdatedPlantForCurrentDate(plant: PlantEntity): PlantEntity {
+        if (plant.harvestStatus.equals("Harvested", ignoreCase = true) ||
+            plant.harvestStatus.equals("Ready to Harvest", ignoreCase = true) ||
+            plant.daysToHarvest <= 0 ||
+            plant.dap >= 33) {
+            return plant
+        }
+
+        val now = System.currentTimeMillis()
+        val elapsedMillis = now - plant.timestamp
+        if (elapsedMillis < 86_400_000L) { // Less than 24 hours elapsed
+            return plant
+        }
+
+        val oneDayMillis = 86_400_000L
+        val elapsedDays = (elapsedMillis / oneDayMillis).toInt()
+        if (elapsedDays <= 0) {
+            return plant
+        }
+
+        // Increase DAP strictly 1 per day
+        val updatedDap = plant.dap + 1
+        val updatedDaysToHarvest = kotlin.math.max(0, plant.daysToHarvest - 1)
+
+        val updatedStage = when {
+            updatedDap <= 10 -> "Seedling"
+            updatedDap in 11..22 -> "Vegetative"
+            updatedDap in 23..32 -> "Heading"
+            else -> "Maturity"
+        }
+
+        val updatedHarvestStatus = if (updatedDaysToHarvest <= 0 || updatedDap >= 33 || updatedStage.equals("Maturity", ignoreCase = true)) {
+            "Ready to Harvest"
+        } else {
+            plant.harvestStatus
+        }
+
+        val calendar = java.util.Calendar.getInstance()
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, updatedDaysToHarvest)
+        val updatedEstHarvestDate = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.US).format(calendar.time)
+
+        return plant.copy(
+            dap = updatedDap,
+            daysToHarvest = updatedDaysToHarvest,
+            stage = updatedStage,
+            harvestStatus = updatedHarvestStatus,
+            estHarvestDate = updatedEstHarvestDate,
+            timestamp = plant.timestamp + oneDayMillis
+        )
     }
 }

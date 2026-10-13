@@ -9,6 +9,8 @@ object MonitoringSession {
     var latestWeather: WeatherResponse? = null
     var isOfflineMode: Boolean = false
     var offlineUserEmail: String? = null
+    var activeUserId: String? = null
+    var isLoggedOut: Boolean = false
     var diameterImageUri: String? = null
     var heightImageUri: String? = null
     var diameterCvResult: CvResult? = null
@@ -16,6 +18,11 @@ object MonitoringSession {
 
     fun clearSession() {
         currentPlant = null
+        latestWeather = null
+        isOfflineMode = false
+        offlineUserEmail = null
+        activeUserId = null
+        isLoggedOut = true
         diameterImageUri = null
         heightImageUri = null
         diameterCvResult = null

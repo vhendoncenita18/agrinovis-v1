@@ -12,13 +12,13 @@ object LocationHelper {
     suspend fun getLastLocation(context: Context): Location? {
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         return try {
-            // Attempt fresh GPS fix; if null or delayed, instantly fallback to device's lastKnownLocation cache
-            val currentLocation = try {
-                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
-            } catch (_: Exception) {
-                null
+            // Instantly return last known location cache for immediate speed
+            val lastLocation = fusedLocationClient.lastLocation.await()
+            if (lastLocation != null) {
+                return lastLocation
             }
-            currentLocation ?: fusedLocationClient.lastLocation.await()
+            // Fallback to fast location provider if cache is empty
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).await()
         } catch (e: Exception) {
             null
         }

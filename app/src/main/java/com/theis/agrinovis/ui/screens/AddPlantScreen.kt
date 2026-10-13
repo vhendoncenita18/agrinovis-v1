@@ -148,6 +148,10 @@ fun AddPlantScreen(
 
             Button(
                 onClick = {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.add(java.util.Calendar.DAY_OF_YEAR, 40)
+                    val formattedEstDate = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.US).format(cal.time)
+
                     val finalId = if (plantId.isBlank()) "L-${UUID.randomUUID().toString().take(6).uppercase()}" else plantId.trim()
                     val newPlant = PlantEntity(
                         id = finalId,
@@ -165,8 +169,9 @@ fun AddPlantScreen(
                         rainfall = 0.0,
                         condition = "Good",
                         harvestStatus = "Growing",
-                        estHarvestDate = "In 40 days",
-                        daysToHarvest = 40
+                        estHarvestDate = formattedEstDate,
+                        daysToHarvest = 40,
+                        timestamp = System.currentTimeMillis()
                     )
                     viewModel.savePlant(newPlant)
                 },

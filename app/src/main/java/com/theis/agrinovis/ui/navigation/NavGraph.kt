@@ -21,6 +21,27 @@ fun NavGraph(navController: NavHostController) {
         composable(Screen.Signup.route) {
             SignupScreen(navController)
         }
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(navController)
+        }
+        composable(
+            route = Screen.VerifyOtp.route,
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            VerifyOtpScreen(navController, email)
+        }
+        composable(
+            route = Screen.ResetPassword.route,
+            arguments = listOf(
+                navArgument("email") { type = NavType.StringType },
+                navArgument("otp") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            val otp = backStackEntry.arguments?.getString("otp") ?: ""
+            ResetPasswordScreen(navController, email, otp)
+        }
         composable(Screen.Dashboard.route) {
             DashboardScreen(navController)
         }

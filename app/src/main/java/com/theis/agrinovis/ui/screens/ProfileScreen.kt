@@ -54,7 +54,8 @@ fun ProfileScreen(
                     showLogoutDialog = false
                     viewModel.signOut {
                         navController.navigate(Screen.Login.route) {
-                            popUpTo(Screen.Dashboard.route) { inclusive = true }
+                            popUpTo(0) { inclusive = true }
+                            launchSingleTop = true
                         }
                     }
                 }) {

@@ -36,6 +36,7 @@ android {
     }
     buildFeatures {
         compose = true
+        mlModelBinding = true
     }
     packaging {
         jniLibs {
@@ -93,7 +94,6 @@ dependencies {
 
     // TensorFlow Lite / LiteRT Engine
     implementation(libs.tflite.core)
-    implementation(libs.tflite.support)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.theis.agrinovis.R
 import com.theis.agrinovis.data.model.WeatherResponse
 import com.theis.agrinovis.data.local.entities.PlantEntity
@@ -113,7 +114,8 @@ fun DashboardHeader(
             Spacer(modifier = Modifier.height(20.dp))
 
             // System Quick Status (Replacing Search Bar)
-            val isOffline = com.theis.agrinovis.data.session.MonitoringSession.isOfflineMode
+            val isOnline by com.theis.agrinovis.data.remote.NetworkMonitor.isOnline.collectAsState()
+            val isOffline = !isOnline || com.theis.agrinovis.data.session.MonitoringSession.isOfflineMode
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -582,14 +584,14 @@ fun HarvestPredictionsSummary(plants: List<PlantEntity>) {
                     fontWeight = FontWeight.Bold
                 )
             } else {
-                val readyCount = plants.count { it.dap >= 45 || it.daysToHarvest <= 0 }
+                val readyCount = plants.count { it.dap >= 33 || it.daysToHarvest <= 0 || it.stage.uppercase() == "MATURITY" }
                 val growingCount = plants.size - readyCount
 
                 Row(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1.2f)) {
                         Text(text = "UPCOMING SCHEDULE", fontSize = 10.sp, fontWeight = FontWeight.Black, color = NeonGreen, letterSpacing = 1.sp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        plants.filter { it.daysToHarvest > 0 && it.dap < 45 }
+                        plants.filter { it.daysToHarvest > 0 && it.dap < 33 }
                             .sortedBy { it.daysToHarvest }
                             .take(3)
                             .forEach { plant ->

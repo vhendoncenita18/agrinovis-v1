@@ -13,17 +13,19 @@ class SyncPlantsWorker(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        Log.d("SyncPlantsWorker", "Starting background plant sync worker...")
+        Log.d("SyncPlantsWorker", "Starting background sync worker (users & plants)...")
         return try {
             val database = AgrinovisDatabase.getDatabase(applicationContext)
             val repository = PlantRepository(database.plantDao())
             
-            val syncResult = repository.syncUnsyncedPlants()
-            if (syncResult.isSuccess) {
-                Log.d("SyncPlantsWorker", "Background plant sync worker completed successfully.")
+            val userSyncResult = repository.syncUnsyncedUsers(database.userDao())
+            val plantSyncResult = repository.syncUnsyncedPlants()
+            
+            if (plantSyncResult.isSuccess || userSyncResult.isSuccess) {
+                Log.d("SyncPlantsWorker", "Background sync worker completed successfully.")
                 Result.success()
             } else {
-                Log.w("SyncPlantsWorker", "Background plant sync worker failed, scheduling retry.")
+                Log.w("SyncPlantsWorker", "Background sync worker failed, scheduling retry.")
                 Result.retry()
             }
         } catch (e: Exception) {

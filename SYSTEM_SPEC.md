@@ -1063,3 +1063,31 @@ PRACTICAL DECISION SUPPORT
 ```
 
 This pipeline represents the central functional architecture of the thesis.
+
+---
+
+# 38. Automatic Daily Growth & Stage Evolution Specification
+
+The application implements a dynamic time-aware evolution engine that automatically progresses monitored lettuce plants day-by-day based on real elapsed time.
+
+## 38.1 Elapsed Time Math
+For any recorded plant asset, the elapsed calendar days since initial measurement/prediction are calculated as:
+
+$$\text{Elapsed Days} = \lfloor \frac{\text{System.currentTimeMillis()} - \text{Creation Timestamp}}{86,400,000 \text{ ms}} \rfloor$$
+
+## 38.2 Dynamic Attribute Recalculation
+- **Updated DAP**: $\text{DAP}_{\text{current}} = \text{DAP}_{\text{initial}} + \text{Elapsed Days}$
+- **Updated Remaining Days**: $\text{DaysToHarvest}_{\text{current}} = \max(0, \text{DaysToHarvest}_{\text{initial}} - \text{Elapsed Days})$
+
+## 38.3 Stage Progression Thresholds
+Biological growth stages transition automatically as elapsed days accumulate:
+- **Seedling**: $\text{DAP} < 10$
+- **Vegetative**: $10 \le \text{DAP} \le 21$
+- **Heading**: $22 \le \text{DAP} \le 35$
+- **Maturity / Harvest Ready**: $\text{DAP} \ge 36$ or $\text{DaysToHarvest} \le 0$
+
+## 38.4 UI & 3D Model Synchronization
+- **3D Filament Renderer**: Dynamically swaps the GLTF asset (`models/{variety}_{stage}.glb`) and adjusts camera zoom/scale according to the updated stage.
+- **Fleet Monitor & Dashboard**: Automatically updates stage section headers, stage badges, and countdown indicators (`X days left` -> `HARVEST READY`).
+- **Disk Persistence**: Updated values are persisted back to Room DB so the app remains synchronized across sessions and offline restarts.
+

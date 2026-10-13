@@ -172,7 +172,7 @@ fun VerificationScreen(navController: NavController) {
     }
 
     // Validation
-    val isDapInvalidForSeedling = growthStage == "Seedling" && (dap.toIntOrNull() ?: 0) > 7
+    val isDapInvalidForSeedling = growthStage == "Seedling" && (dap.toIntOrNull() ?: 0) > 10
     
     val isFormValid = height.isNotEmpty() && diameter.isNotEmpty() && 
                      variety.isNotEmpty() && plantedDate.isNotEmpty() && 
@@ -248,8 +248,8 @@ fun VerificationScreen(navController: NavController) {
                                 Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
-                                    Text("AI MODEL TRAINING IN PROGRESS", color = Color(0xFFFFB300), fontWeight = FontWeight.Black, fontSize = 12.sp)
-                                    Text("CV model ('models/cv_model.tflite') is pending research training. Baseline values loaded for manual verification.", color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
+                                    Text("AI MODEL PENDING OR SKIPPED", color = Color(0xFFFFB300), fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                    Text("CV model ('models/cv_model.tflite') was not triggered or confidence was low. Baseline values loaded for manual verification.", color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
                                 }
                             }
                         }
@@ -405,7 +405,7 @@ fun VerificationScreen(navController: NavController) {
                 if (isDapInvalidForSeedling) {
                     item {
                         Text(
-                            text = "Seedling stage cannot have a DAP greater than 7 days.",
+                            text = "Seedling stage cannot have a DAP greater than 10 days.",
                             color = Color(0xFFFF3D00),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -569,9 +569,9 @@ fun VerificationScreen(navController: NavController) {
                                 windSpeed = windSpeed.toDoubleOrNull() ?: 0.0,
                                 rainfall = rainfall.toDoubleOrNull() ?: 0.0,
                                 condition = condition,
-                                harvestStatus = if ((dap.toIntOrNull() ?: 0) >= 45) "Ready to Harvest" else "Growing",
-                                estHarvestDate = if (predictionResult.isSuccessful && predictionResult.estimatedHarvestDate.isNotBlank()) predictionResult.estimatedHarvestDate else "Sep 18, 2026",
-                                daysToHarvest = if (predictionResult.isSuccessful) predictionResult.daysToHarvest else 8
+                                harvestStatus = if ((dap.toIntOrNull() ?: 0) >= 33 || predictionResult.daysToHarvest <= 0) "Ready to Harvest" else "Growing",
+                                estHarvestDate = predictionResult.estimatedHarvestDate,
+                                daysToHarvest = predictionResult.daysToHarvest
                             )
                             MonitoringSession.currentPlant = entity
                             navController.navigate(Screen.PredictionResult.route)

@@ -49,7 +49,6 @@ fun LoginScreen(
 
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
-    var showForgotPasswordDialog by remember { mutableStateOf(false) }
 
     val authState by viewModel.authState.collectAsState()
     val context = LocalContext.current
@@ -103,43 +102,7 @@ fun LoginScreen(
         }
     }
 
-    if (showForgotPasswordDialog) {
-        var resetEmail by remember { mutableStateOf(email) }
-        AlertDialog(
-            onDismissRequest = { showForgotPasswordDialog = false },
-            containerColor = DarkHologramBG,
-            title = { Text("RECOVER ACCESS", color = Color.White, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Enter your registered email address to receive password reset instructions.",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 13.sp
-                    )
-                    AgrinovisTextField(
-                        value = resetEmail,
-                        onValueChange = { resetEmail = it },
-                        label = "EMAIL",
-                        placeholder = "farmer@agrinovis.io",
-                        leadingIcon = Icons.Default.Email
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showForgotPasswordDialog = false
-                    Toast.makeText(context, "Password reset link sent to $resetEmail", Toast.LENGTH_LONG).show()
-                }) {
-                    Text("SEND INSTRUCTIONS", color = NeonGreen, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showForgotPasswordDialog = false }) {
-                    Text("CANCEL", color = Color.White)
-                }
-            }
-        )
-    }
+
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -194,7 +157,6 @@ fun LoginScreen(
                 exit = fadeOut()
             ) {
                 val errorMessage = (authState as? AuthState.Error)?.message ?: ""
-                val isNetworkError = errorMessage.contains("Network", ignoreCase = true) || errorMessage.contains("Internet", ignoreCase = true) || errorMessage.contains("connect", ignoreCase = true)
 
                 Box(
                     modifier = Modifier
@@ -220,19 +182,6 @@ fun LoginScreen(
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
                             )
-                        }
-
-                        if (isNetworkError) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedButton(
-                                onClick = { viewModel.loginOffline(email.trim()) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonGreen),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonGreen)
-                            ) {
-                                Text("⚡ CONTINUE IN OFFLINE MODE", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            }
                         }
                     }
                 }
@@ -282,7 +231,7 @@ fun LoginScreen(
                     .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = { showForgotPasswordDialog = true }) {
+                TextButton(onClick = { navController.navigate(Screen.ForgotPassword.route) }) {
                     Text(
                         text = "Forgot Password?",
                         color = NeonGreen.copy(alpha = 0.85f),

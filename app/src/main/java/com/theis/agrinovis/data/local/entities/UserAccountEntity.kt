@@ -9,5 +9,7 @@ data class UserAccountEntity(
     val email: String,
     val passwordHash: String,
     val fullName: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val pendingSync: Boolean = true,
+    val supabaseUserId: String? = null
 )

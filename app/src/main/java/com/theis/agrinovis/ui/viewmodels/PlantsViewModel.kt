@@ -13,12 +13,16 @@ import com.theis.agrinovis.data.repository.PlantRepository
 import com.theis.agrinovis.data.repository.SyncStatus
 import com.theis.agrinovis.data.remote.StorageService
 import com.theis.agrinovis.data.session.MonitoringSession
+import io.github.jan.supabase.auth.auth
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -33,7 +37,10 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
     private val repository: PlantRepository
     private val activityDao = AgrinovisDatabase.getDatabase(application).activityLogDao()
 
-    val allPlants: StateFlow<List<PlantEntity>>
+    private val _currentUserId = MutableStateFlow<String?>(null)
+    private val _allPlants = MutableStateFlow<List<PlantEntity>>(emptyList())
+    val allPlants: StateFlow<List<PlantEntity>> = _allPlants.asStateFlow()
+
     val allActivities: StateFlow<List<ActivityLogEntity>>
 
     private val _savePlantState = MutableStateFlow<SavePlantState>(SavePlantState.Idle)
@@ -46,11 +53,24 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
         val plantDao = AgrinovisDatabase.getDatabase(application).plantDao()
         repository = PlantRepository(plantDao)
         
-        allPlants = repository.allPlants.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+        _currentUserId.value = repository.getCurrentUserId()
+
+        viewModelScope.launch {
+            _currentUserId.collectLatest { userId ->
+                android.util.Log.d("ROOM DEBUG", "PlantsViewModel collectLatest userId: '$userId'")
+                _allPlants.value = emptyList() // Immediately purge stale plants from previous user session
+                val email = MonitoringSession.offlineUserEmail ?: com.theis.agrinovis.data.remote.SupabaseClient.client.auth.currentUserOrNull()?.email
+                if (!userId.isNullOrBlank() || !email.isNullOrBlank()) {
+                    repository.getPlantsForUser(userId, email).collect { plants ->
+                        android.util.Log.d("ROOM DEBUG", "PlantsViewModel collected ${plants.size} plants for userId: '$userId', email: '$email'")
+                        _allPlants.value = plants
+                    }
+                } else {
+                    android.util.Log.d("ROOM DEBUG", "PlantsViewModel userId/email is null/blank, keeping empty plants list")
+                    _allPlants.value = emptyList()
+                }
+            }
+        }
 
         allActivities = activityDao.getAllActivities().stateIn(
             scope = viewModelScope,
@@ -59,12 +79,23 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
         )
 
         // Automatically sync latest records from Supabase on init
+        refreshUserAndPlants()
+    }
+
+    fun refreshUserAndPlants() {
+        val activeId = repository.getCurrentUserId()
+        android.util.Log.d("ROOM DEBUG", "refreshUserAndPlants() activeId = '$activeId', currentStoredId = '${_currentUserId.value}'")
+        if (_currentUserId.value != activeId) {
+            _allPlants.value = emptyList()
+            _currentUserId.value = activeId
+        }
         syncFromRemote()
     }
 
     fun savePlant(plant: PlantEntity) {
         viewModelScope.launch {
             _savePlantState.value = SavePlantState.Loading
+            _currentUserId.value = repository.getCurrentUserId()
 
             // Capture image URIs before clearing session
             val diameterUri = MonitoringSession.diameterImageUri
@@ -105,8 +136,9 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
 
     fun forceSyncAll() {
         viewModelScope.launch {
+            _currentUserId.value = repository.getCurrentUserId()
             _isSyncing.value = true
-            repository.forceSync()
+            repository.forceSync(getApplication())
             repository.enqueueSyncWorker(getApplication())
             _isSyncing.value = false
         }
@@ -114,6 +146,7 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
 
     fun syncFromRemote() {
         viewModelScope.launch {
+            _currentUserId.value = repository.getCurrentUserId()
             repository.fetchRemotePlants()
         }
     }
@@ -147,7 +180,7 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
                 BitmapFactory.decodeStream(it, null, options)
             }
 
-            // Target max dimension around 1280px for dataset storage (down from 4000px+)
+            // Target max dimension around 1280px for dataset storage
             val maxDimension = 1280
             var inSampleSize = 1
             if (options.outHeight > maxDimension || options.outWidth > maxDimension) {
@@ -158,7 +191,6 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
-            // 2. Decode sampled bitmap
             val decodeOptions = BitmapFactory.Options().apply {
                 this.inSampleSize = inSampleSize
             }
@@ -166,7 +198,6 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
                 BitmapFactory.decodeStream(it, null, decodeOptions)
             } ?: return null
 
-            // 3. Compress to JPEG (80% quality -> reduces file size ~98% from ~10MB to ~150KB)
             val outputStream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
             bitmap.recycle()
@@ -181,6 +212,27 @@ class PlantsViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             repository.insert(plant, getApplication())
             activityDao.insertActivity(ActivityLogEntity(action = "UPDATED", affectedRecord = "Plant ${plant.id}"))
+        }
+    }
+
+    fun harvestPlant(plant: PlantEntity) {
+        viewModelScope.launch {
+            if (MonitoringSession.currentPlant?.id == plant.id) {
+                MonitoringSession.currentPlant = null
+            }
+            val updatedPlant = plant.copy(harvestStatus = "Harvested")
+            repository.insert(updatedPlant, getApplication())
+            activityDao.insertActivity(
+                ActivityLogEntity(
+                    action = "HARVESTED",
+                    affectedRecord = "Plant ${plant.id} (${plant.variety}) at ${plant.dap} DAP"
+                )
+            )
+            com.theis.agrinovis.ui.utils.NotificationHelper.showNotification(
+                context = getApplication(),
+                title = "🥬 Lettuce Harvested Successfully",
+                message = "Plant ID ${plant.id} (${plant.variety}) has been finalized at ${plant.dap} DAP."
+            )
         }
     }
 

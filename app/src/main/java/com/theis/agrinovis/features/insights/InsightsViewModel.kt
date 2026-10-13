@@ -58,7 +58,8 @@ class InsightsViewModel(application: Application) : AndroidViewModel(application
         _uiState.value = InsightsUiState.Loading
         viewModelScope.launch {
             try {
-                repository.allPlants.collect { plants ->
+                val currentUserId = repository.getCurrentUserId()
+                repository.getPlantsForUser(currentUserId).collect { plants ->
                     if (plants.isEmpty()) {
                         _uiState.value = InsightsUiState.Empty
                     } else {
@@ -68,7 +69,7 @@ class InsightsViewModel(application: Application) : AndroidViewModel(application
 
                         plants.forEach { plant ->
                             if (!plant.harvestStatus.equals("Harvested", ignoreCase = true)) {
-                                if (plant.dap >= 45 || plant.daysToHarvest == 0) {
+                                if (plant.dap >= 33 || plant.daysToHarvest == 0) {
                                     val title = "🥬 Ready for Harvest Matrix"
                                     val message = "Plant ID ${plant.id} (${plant.variety}) is mature at ${plant.dap} DAP."
                                     
@@ -105,7 +106,7 @@ class InsightsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             try {
                 val updatedPlant = plant.copy(harvestStatus = "Harvested")
-                repository.insert(updatedPlant)
+                repository.insert(updatedPlant, getApplication())
                 
                 // Log activity
                 val activityDao = AgrinovisDatabase.getDatabase(getApplication()).activityLogDao()
@@ -134,7 +135,7 @@ class InsightsViewModel(application: Application) : AndroidViewModel(application
                     message = message
                 )
             } catch (e: Exception) {
-                // handle safely
+                e.printStackTrace()
             }
         }
     }
@@ -147,10 +148,10 @@ object InsightsCalculator {
         
         val total = activePlants.size
         
-        val readyToHarvest = activePlants.filter { it.dap >= 45 || it.daysToHarvest <= 0 }
+        val readyToHarvest = activePlants.filter { it.dap >= 33 || it.daysToHarvest <= 0 }
         val readyToHarvestCount = readyToHarvest.size
         
-        val nearHarvest = activePlants.count { it.daysToHarvest in 0..7 && !(it.dap >= 45 || it.daysToHarvest <= 0) }
+        val nearHarvest = activePlants.count { it.daysToHarvest in 1..7 && it.dap < 33 }
         val healthyGrowing = total - readyToHarvestCount
 
         // Growth Stage splits
@@ -173,7 +174,7 @@ object InsightsCalculator {
             "Seedling" to 3
         )
 
-        val upcoming = activePlants.filter { it.daysToHarvest > 0 && it.dap < 45 }
+        val upcoming = activePlants.filter { it.daysToHarvest > 0 && it.dap < 33 }
             .sortedWith(
                 compareBy<PlantEntity> { stagePriority[it.stage] ?: 99 }
                     .thenBy { it.daysToHarvest }
